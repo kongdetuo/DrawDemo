@@ -13,6 +13,7 @@ namespace DrawDemo
         {
             return new Reference();
         }
+
         public Reference GetEndPointReference(int index)
         {
             if (index == 0)
@@ -21,6 +22,42 @@ namespace DrawDemo
                 return new Reference();
 
             throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    public abstract class DrawingState
+    {
+        public DrawingCanvas Canvas { get; private set; }
+
+        public DrawingState(DrawingCanvas drawingCanvas)
+        {
+            this.Canvas = drawingCanvas;
+            Canvas.MouseLeftButtonDown += DrawingCanvas_MouseLeftButtonDown;
+            Canvas.MouseLeftButtonUp += DrawingCanvas_MouseLeftButtonUp;
+        }
+
+        public void Dispose()
+        {
+            Canvas.MouseLeftButtonDown -= DrawingCanvas_MouseLeftButtonDown;
+            Canvas.MouseLeftButtonUp -= DrawingCanvas_MouseLeftButtonUp;
+        }
+
+        protected virtual void OnMouseLeftButtonDown()
+        {
+        }
+
+        protected virtual void OnMouseLeftButtonUp()
+        {
+        }
+
+        private void DrawingCanvas_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            OnMouseLeftButtonUp();
+        }
+
+        private void DrawingCanvas_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            OnMouseLeftButtonDown();
         }
     }
 }

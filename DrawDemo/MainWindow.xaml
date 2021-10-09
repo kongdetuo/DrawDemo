@@ -17,21 +17,17 @@
         </Grid.RowDefinitions>
         <StackPanel>
             <RadioButton x:Name="drawRectagle" Checked="DrawRectagle_Checked" Content="绘制矩形"/>
-            <!--<RadioButton x:Name="multiSelect" Checked="MultiSelect_Checked" Content="框选"/>-->
-            <RadioButton x:Name="delete" Checked="Delete_Checked" Content="删除"/>
-            <RadioButton x:Name="move" Checked="Move_Checked" Content="移动"/>
-            <RadioButton x:Name="drawLine" Checked="DrawLine_Checked" Content="绘制线条"/>
+            <RadioButton x:Name="multiSelect" Checked="MultiSelect_Checked" Content="框选"/>
+            <RadioButton x:Name="delete" Checked="Delete_Checked" Unchecked="Unchecked"  Content="删除"/>
+            <RadioButton x:Name="move" Checked="Move_Checked" Unchecked="Unchecked"  Content="移动"/>
+            <RadioButton x:Name="drawLine" Checked="DrawLine_Checked" Unchecked="Unchecked"  Content="绘制线条"/>
             <Label Name="label1"/>
         </StackPanel>
 
         <local:DrawingCanvas Grid.Column="1" x:Name="drawingSurface" Background="LightGray" 
-                             MouseLeftButtonDown="DrawingSurface_MouseLeftButtonDown"
-                             MouseLeftButtonUp="DrawingSurface_MouseLeftButtonUp"
-                             MouseMove="DrawingSurface_MouseMove"
-
                              ClipToBounds="True"/>
 
 
-        <TextBlock Text="111" Grid.Column="1" Grid.Row="2"/>
+        <TextBlock Name="aaa" Text="111" Grid.Column="1" Grid.Row="2"/>
     </Grid>
 </Window>

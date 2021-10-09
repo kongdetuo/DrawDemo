@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace DrawDemo
 {
-    public class Map<T,U>
+    public class Map<T, U>
     {
         protected Dictionary<T, U> map1 = new Dictionary<T, U>();
         protected Dictionary<U, T> map2 = new Dictionary<U, T>();
@@ -13,7 +13,9 @@ namespace DrawDemo
         {
             get
             {
-                return map1[key];
+                if (map1.ContainsKey(key))
+                    return map1[key];
+                return default(U);
             }
         }
 
@@ -21,7 +23,9 @@ namespace DrawDemo
         {
             get
             {
-                return map2[key];
+                if (map2.ContainsKey(key))
+                    return map2[key];
+                return default(T);
             }
         }
 

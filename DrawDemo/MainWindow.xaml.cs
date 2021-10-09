@@ -28,217 +28,34 @@ namespace DrawDemo
             label1.Content = dpi.DpiScaleX;
         }
 
-        private bool MouseLeftDown;
-        private Point MouseLeftDownPoint;
-        private Action<object, MouseButtonEventArgs> MouseLeftButtonDownAction;
-        private Action<object, MouseButtonEventArgs> MouseLeftButtonUpAction;
-        private Action<object, MouseEventArgs> MouseMoveAction;
-        private Action<object, MouseEventArgs> MouseMoveAction2;
-
-        private void clearAction()
-        {
-            MouseLeftButtonDownAction = null;
-            MouseLeftButtonUpAction = null;
-            MouseMoveAction = null;
-            MouseMoveAction2 = null;
-        }
-
-
-        private void DrawingSurface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            try
-            {
-                var canvas = sender as DrawingCanvas;
-                canvas.CaptureMouse();
-                MouseLeftDownPoint = e.GetPosition(canvas);
-                MouseLeftDown = true;
-                MouseLeftButtonDownAction?.Invoke(sender, e);
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        private void DrawingSurface_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            try
-            {
-                MouseLeftDown = false;
-                (sender as DrawingCanvas).ReleaseMouseCapture();
-                MouseLeftButtonUpAction?.Invoke(sender, e);
-                //MouseLeftDownPoint = new Point();
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        private void DrawingSurface_MouseMove(object sender, MouseEventArgs e)
-        {
-            try
-            {
-                if (!MouseLeftDown)
-                    MouseMoveAction?.Invoke(sender, e);
-                else
-                    MouseMoveAction2?.Invoke(sender, e);
-            }
-            catch (Exception)
-            {
-            }
-        }
+        private DrawActionBase DrawAction;
 
         private void DrawRectagle_Checked(object sender, RoutedEventArgs e)
         {
-            MouseLeftButtonDownAction = (s, arg) =>
-            {
-                var geometry = new RectangleGeometry(new Rect(drawingSurface.RenderSize));
-                //var pointClicked = arg.GetPosition(drawingSurface);
-                //var visual = new DrawingVisual();
-                //using (var dc = visual.RenderOpen())
-                //{
-
-                //    var g = new GuidelineSet(new[] { 0.5 }, new[] { 0.5 });
-                //    dc.PushGuidelineSet(g);
-                //    var brush = Brushes.AliceBlue;
-                //    dc.DrawRectangle(brush, new Pen(Brushes.SteelBlue, 1), new Rect(pointClicked, new Size(30, 30)));
-                //    dc.Pop();
-                //    var formattedText = new FormattedText("MC", System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("微软雅黑"), 24, Brushes.Black, 1);
-                //    dc.DrawText(formattedText, pointClicked);
-                //}
-
-                var drawObj = new DrawObj()
-                {
-                    Geometry = new RectangleGeometry(new Rect(MouseLeftDownPoint, new Size(20, 20))),
-                    FillColor = Brushes.AliceBlue,
-                    BorderColor = Brushes.Black
-                };
-
-                var visual = new DrawingVisual();
-                DrawObj(visual, drawObj);
-                this.AllObjs.Add(drawObj, visual);
-                drawingSurface.AddVisual(visual);
-            };
-            MouseLeftButtonUpAction = null;
-            MouseMoveAction = null;
+            DrawAction?.Dispose();
+            DrawAction = new DrawRectAction(this.drawingSurface);
         }
 
         private void MultiSelect_Checked(object sender, RoutedEventArgs e)
         {
-            List<DrawingVisual> visuals = new List<DrawingVisual>();
-            if (!(sender as RadioButton).IsChecked.Value)
-            {
-                foreach (var item in visuals)
-                {
-                    item.Effect = null;
-                }
-                MouseLeftButtonDownAction = null;
-                MouseMoveAction = null;
-                MouseLeftButtonUpAction = null;
-            }
-            else
-            {
-                var visual = new DrawingVisual();
-                var isMultiSelecting = false;
-                var pointStart = new Point();
-                MouseLeftButtonDownAction = (s, arg) =>
-                {
-                    isMultiSelecting = true;
-                    visual = new DrawingVisual();
-                    pointStart = arg.GetPosition(drawingSurface);
-                    drawingSurface.AddVisual(visual);
-                    drawingSurface.CaptureMouse();
-                };
-                MouseMoveAction = (s, arg) =>
-                {
-                    if (isMultiSelecting)
-                    {
-                        var pointCurrent = arg.GetPosition(drawingSurface);
-                        pointCurrent.X = Math.Max(pointCurrent.X, 0);
-                        pointCurrent.X = Math.Min(pointCurrent.X, drawingSurface.RenderSize.Width);
-                        pointCurrent.Y = Math.Max(pointCurrent.Y, 0);
-                        pointCurrent.Y = Math.Min(pointCurrent.Y, drawingSurface.RenderSize.Height);
-
-                        using (var dc = visual.RenderOpen())
-                        {
-                            var pen = new Pen(Brushes.DarkGray, 2)
-                            {
-                                DashStyle = DashStyles.Dash
-                            };
-
-                            dc.DrawRectangle(Brushes.Transparent, pen, new Rect(pointStart, pointCurrent));
-                        }
-                    }
-                };
-                MouseLeftButtonUpAction = (s, arg) =>
-                {
-                    if (isMultiSelecting)
-                    {
-                        isMultiSelecting = false;
-
-                        visuals = drawingSurface.GetVisuals(new RectangleGeometry(visual.Drawing.Bounds), true, true);
-                        foreach (var item in visuals)
-                        {
-                            item.Effect = new DropShadowEffect()
-                            {
-                                Color = Colors.Black,
-                                ShadowDepth = 0,
-                                BlurRadius = 7
-                            };
-                        }
-
-                        drawingSurface.RemoveVisual(visual);
-                        drawingSurface.ReleaseMouseCapture();
-                    }
-                };
-            }
+            DrawAction?.Dispose();
+            DrawAction = new SelectionAction(this.drawingSurface);
         }
 
         private void Delete_Checked(object sender, RoutedEventArgs e)
         {
-            DrawingVisual selectedVisual = null;
-            DrawingVisual fakeVisual = null;    // 用来高亮显示在最上层的元素
-
-
-            MouseLeftButtonDownAction = null;
-            MouseLeftButtonUpAction = (s, arg) =>
-            {
-                drawingSurface.RemoveVisual(selectedVisual);
-                drawingSurface.RemoveVisual(fakeVisual);
-                selectedVisual = null;
-                fakeVisual = null;
-            };
-            MouseMoveAction = (s, arg) =>
-            {
-                var pointClicked = arg.GetPosition(drawingSurface);
-                var visual = drawingSurface.GetVisual(pointClicked);
-                if (visual == fakeVisual)
-                    return;
-                if (visual == null)
-                {
-                    selectedVisual = null;
-                    drawingSurface.RemoveVisual(fakeVisual);
-                    return;
-                }
-
-                selectedVisual = visual;
-                drawingSurface.RemoveVisual(fakeVisual);
-                fakeVisual = new DrawingVisual();
-                using (var dc = fakeVisual.RenderOpen())
-                {
-                    dc.DrawDrawing(selectedVisual.Drawing);
-                }
-                fakeVisual.Effect = new DropShadowEffect()
-                {
-                    Color = Colors.Black,
-                    ShadowDepth = 0,
-                    BlurRadius = 7
-                };
-                drawingSurface.AddVisual(fakeVisual);
-            };
+            DrawAction?.Dispose();
         }
 
         private void Move_Checked(object sender, RoutedEventArgs e)
         {
+
+
+
+
+
+
+
             var isSelect = false;
             Drawing drawing = null;
             Point startPoint = new Point();
@@ -323,56 +140,111 @@ namespace DrawDemo
 
         private double PenThickness = 1;
 
-        private void DrawObj(DrawingVisual visual, DrawObj obj)
-        {
-            using (var dc = visual.RenderOpen())
-            {
-                dc.DrawGeometry(obj.FillColor, new Pen(obj.BorderColor, PenThickness), obj.Geometry);
-            }
-        }
+        
 
         private void DrawLine_Checked(object sender, RoutedEventArgs e)
         {
-            clearAction();
+            this.DrawAction?.Dispose();
+            this.DrawAction = new DrawLineAction(this.drawingSurface);
+        }
+
+        double Scale = 1;
+        private object lockObj = new object();
+
+        private Point LeftTop = new Point(0, 0);
+        private Point RightBottom = new Point(0, 0);
 
 
+        private void DoScale(Point centerPoint, double scale)
+        {
 
+        }
 
-            var canvas = drawingSurface;
-            var previewVisual = new DrawingVisual();
-            var drawObj = new DrawObj();
-            drawObj.BorderColor = Brushes.Black;
-            drawObj.FillColor = Brushes.Black;
-            MouseMoveAction2 = (s, arg) =>
+        private void drawingSurface_MouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            var scale = 0d;
+            Point leftTop;
+            lock (lockObj)
             {
-                if(canvas.GetAdorner().VisualCount == 0)
-                    canvas.GetAdorner().AddVisual(previewVisual);
+                scale = this.Scale;
+                leftTop = this.LeftTop;
+                var rightBottom = this.RightBottom;
+                //var p = e.GetPosition(drawingSurface);
+                var p = new Point(100, 100);
+                var scaleCenter = leftTop + new Vector(p.X * scale, p.Y * scale);
+                //scale += e.Delta * 0.001;
+               scale += 0.1;
+                if (scale < 0.1)
+                    return;
+                scaleCenter = new Point(scaleCenter.X * scale, scaleCenter.Y * scale);
+                leftTop = scaleCenter - new Vector(p.X, p.Y) ;
+                this.Scale = scale;
+                this.LeftTop = leftTop;
+                aaa.Text = scaleCenter.ToString();
+            }
 
-                var p1 = MouseLeftDownPoint;
-                var p2 = arg.GetPosition(canvas);
-                drawObj.Geometry = new LineGeometry(p1, p2);
-                DrawObj(previewVisual, drawObj);
-            };
-
-            MouseLeftButtonUpAction = (s, arg) =>
+            var transform = new TransformGroup()
             {
-                canvas.GetAdorner().ClearVisuals();
-
-                var p1 = MouseLeftDownPoint;
-                var p2 = arg.GetPosition(canvas);
-
-                drawObj = new DrawObj
+                Children = new TransformCollection()
                 {
-                    BorderColor = Brushes.Black,
-                    FillColor = Brushes.Black,
-                    Geometry = new LineGeometry(p1, p2)
-                };
-
-                var newVisual = new DrawingVisual();
-                DrawObj(newVisual, drawObj);
-                this.AllObjs.Add(newVisual, drawObj);
-                canvas.AddVisual(newVisual);
+                    new ScaleTransform(scale, scale),
+                    new TranslateTransform(-LeftTop.X, -LeftTop.Y)
+                }
             };
+            var guide = GetGuidelineSet(leftTop, scale);
+            foreach (var item in AllObjs.Values)
+            {
+                var visual = item.Item1;
+                var drawObj = item.Item2;
+
+                using (var dc = visual.RenderOpen())
+                {
+                    var dg = new GeometryGroup();
+                    dg.Children.Add(drawObj.Geometry);
+                    dg.Transform = (Transform)transform;
+                    guide.GuidelinesX = new DoubleCollection();
+                    var rect = dg.Bounds;
+                    guide.GuidelinesX.Add(rect.X + 0.5);
+                    guide.GuidelinesX.Add(rect.X + rect.Width + 0.5);
+                    guide.GuidelinesY.Add(rect.Y + 0.5);
+                    guide.GuidelinesY.Add(rect.Y + rect.Height + 0.5);
+                    dc.PushGuidelineSet(guide);
+                    dc.DrawGeometry(drawObj.FillColor, new Pen(drawObj.BorderColor, PenThickness), dg);
+                    dc.Pop();
+                }
+            }
+        }
+
+        public GuidelineSet GetGuidelineSet(Point leftTop, double scale)
+        {
+            var guide = new GuidelineSet();
+            //var height = this.drawingSurface.RenderSize.Height;
+            //var width = this.drawingSurface.RenderSize.Width;
+            //for (int i = 0; i < width; i++)
+            //{
+            //    var value = leftTop.X + i / scale;
+            //    guide.GuidelinesX.Add(value + 0.5);
+            //}
+            //for (int i = 0; i < height; i++)
+            //{
+            //    var value = leftTop.Y + i / scale;
+            //    guide.GuidelinesY.Add(value + 0.5);
+            //}
+            return guide;
+        }
+
+
+        private void DrawingSurface_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2 && e.ChangedButton == MouseButton.Middle)
+            {
+
+            }
+        }
+
+        private void Unchecked(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }
