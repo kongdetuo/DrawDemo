@@ -28,7 +28,7 @@ namespace DrawDemo
             var adorner = adornerLayer.GetAdorners(this)
                 ?.OfType<DrawingConvasAdorner>()
                 .FirstOrDefault();
-            if(adorner == null)
+            if (adorner == null)
             {
                 adorner = new DrawingConvasAdorner(this);
                 adorner.IsHitTestVisible = false;
@@ -37,10 +37,24 @@ namespace DrawDemo
             }
             return adorner;
         }
-        public DrawingVisual GetVisual(Point point)
+
+        public DrawingVisual GetVisual(Point point, int tol = 3)
         {
             var hitTestResult = VisualTreeHelper.HitTest(this, point);
-            return hitTestResult.VisualHit as DrawingVisual;
+            var result = hitTestResult.VisualHit as DrawingVisual;
+            if (result == null)
+            {
+                var vec = new Vector(tol, tol);
+                var rect = new Rect(point - vec, point + vec);
+                var geo = new RectangleGeometry(rect);
+                VisualTreeHelper.HitTest(this, null, hitResult =>
+                {
+                    var geometryResult = hitResult as GeometryHitTestResult;
+                    result = geometryResult.VisualHit as DrawingVisual;
+                    return result == null ? HitTestResultBehavior.Continue : HitTestResultBehavior.Stop;
+                }, new GeometryHitTestParameters(geo));
+            }
+            return result;
         }
 
         public List<DrawingVisual> GetVisuals(Geometry geometry, bool fullyInside = false, bool intersets = false, bool fullyContains = false)
@@ -91,18 +105,6 @@ namespace DrawDemo
             {
                 base.RemoveVisualChild(item);
                 base.RemoveLogicalChild(item);
-            }
-        }
-    }
-
-
-    public static class DrawingVisualHelper
-    {
-        public static void SetDrawing(this DrawingVisual drawingVisual, Drawing drawing)
-        {
-            using (var dc = drawingVisual.RenderOpen())
-            {
-                dc.DrawDrawing(drawing);
             }
         }
     }

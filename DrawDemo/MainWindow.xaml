@@ -16,10 +16,10 @@
             <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
         <StackPanel>
+            <RadioButton x:Name="multiSelect" Checked="MultiSelect_Checked" Content="选择"/>
             <RadioButton x:Name="drawRectagle" Checked="DrawRectagle_Checked" Content="绘制矩形"/>
-            <RadioButton x:Name="multiSelect" Checked="MultiSelect_Checked" Content="框选"/>
-            <RadioButton x:Name="delete" Checked="Delete_Checked" Unchecked="Unchecked"  Content="删除"/>
-            <RadioButton x:Name="move" Checked="Move_Checked" Unchecked="Unchecked"  Content="移动"/>
+            <!--<RadioButton x:Name="delete" Checked="Delete_Checked" Unchecked="Unchecked"  Content="删除"/>
+            <RadioButton x:Name="move" Checked="Move_Checked" Unchecked="Unchecked"  Content="移动"/>-->
             <RadioButton x:Name="drawLine" Checked="DrawLine_Checked" Unchecked="Unchecked"  Content="绘制线条"/>
             <Label Name="label1"/>
         </StackPanel>

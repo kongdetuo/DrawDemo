@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 
 namespace DrawDemo
 {
@@ -19,7 +19,7 @@ namespace DrawDemo
 
 
 
-        public virtual void Dispose()
+        public override void Dispose()
         {
             base.Dispose();
 
@@ -31,6 +31,48 @@ namespace DrawDemo
             var dc = visual.RenderOpen();
             dc.PushGuidelineSet(new GuidelineSet(new[] { 0.5 }, new[] { 0.5 }));
             return dc;
+        }
+
+        public void Clear()
+        {
+            using var dc = this.previewVisual.RenderOpen();
+        }
+    }
+
+    public abstract class DrapDrawBase : DrawBase
+    {
+        public DrapDrawBase(DrawingCanvas canvas) : base(canvas)
+        {
+
+        }
+
+        private Point start;
+        protected bool MouseLeftDown;
+
+        public abstract void Draw(DrawingContext context, Point start, Point end);
+
+        protected override void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            Canvas.CaptureMouse();
+            start = e.GetPosition(Canvas);
+            MouseLeftDown = true;
+        }
+        protected override void Canvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            MouseLeftDown = false;
+            (sender as DrawingCanvas).ReleaseMouseCapture();
+            using var dc = previewVisual.RenderOpen();
+        }
+
+        protected override void Canvas_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (MouseLeftDown)
+            {
+                var end = e.GetPosition(Canvas);
+                using var dc = previewVisual.RenderOpen();
+                dc.PushGuidelineSet(new GuidelineSet(new[] { 0.5 }, new[] { 0.5 }));
+                Draw(dc, start, end);
+            }
         }
     }
 
@@ -76,232 +118,171 @@ namespace DrawDemo
         }
     }
 
-    public abstract class DrawActionBase : DrawBase
+    public abstract class DrawActionBase
     {
+        public DrawingMap Map { get; private set; }
 
-        public DrawActionBase(DrawingCanvas canvas):base(canvas)
+
+        public DrawActionBase(DrawingMap map)
+        {
+            this.Map = map;
+            map.Canvas.KeyDown += Canvas_KeyDown;
+        }
+
+        private void Canvas_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                OnDrawComplated();
+            }
+        }
+
+        public event EventHandler Complated;
+
+        public virtual void MouseLeftButtonDown(Point point)
         {
 
         }
 
-        public override void Dispose()
+        public virtual void MouseLeftButtonUp(Point point)
         {
-            base.Dispose();
+
         }
+
+        public virtual void MouseMove(Point point)
+        {
+
+        }
+
+        protected void OnDrawComplated()
+        {
+            this.Complated?.Invoke(this, EventArgs.Empty);
+        }
+
     }
 
     public abstract class SingClickDrawAction : DrawActionBase
     {
-        public SingClickDrawAction(DrawingCanvas canvas) : base(canvas)
+        public SingClickDrawAction(DrawingMap map) : base(map)
         {
 
         }
 
-        public abstract void DrawPreview(DrawingContext context, Point currentPoint);
-        public abstract void Draw(DrawingContext context, Point currentPoint);
+        public abstract DrawObj CreatePreviewObj(Point point);
+        public abstract DrawObj CreateObj(Point point);
 
-        protected override void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        public override void MouseLeftButtonUp(Point point)
         {
-            var visual = new DrawingVisual();
-            using var dc = base.RenderOpen(visual);
-            Draw(dc, GetCurrentPoint(e));
-            this.Canvas.AddVisual(visual);
+            var obj = CreateObj(point);
+            this.Map.AddObject(obj);
         }
 
-
-        protected override void Canvas_MouseMove(object sender, MouseEventArgs e)
+        public override void MouseMove(Point point)
         {
-            using var dc = base.RenderOpen(previewVisual);
-            Draw(dc, GetCurrentPoint(e));
+            this.Map.DrawPreview(CreatePreviewObj(point));
         }
     }
 
-    public abstract class MultiClickDrawAction : DrawActionBase
-    {
-        protected MultiClickDrawAction(DrawingCanvas canvas) : base(canvas)
-        {
-        }
+    //public abstract class MultiClickDrawAction : DrawActionBase
+    //{
+    //    protected MultiClickDrawAction(DrawingCanvas canvas) : base(canvas)
+    //    {
+    //    }
 
-        public abstract void DrawPreview(Point privious, Point currentPrivew);
-        public abstract void Draw(Point privious, Point current);
-    }
+    //    public abstract void DrawPreview(Point privious, Point currentPrivew);
+    //    public abstract void Draw(Point privious, Point current);
+    //}
 
     public abstract class DragDrawAction : DrawActionBase
     {
-        public DragDrawAction(DrawingCanvas canvas) : base(canvas)
+        public DragDrawAction(DrawingMap canvas) : base(canvas)
         {
 
         }
         private Point start;
         protected bool MouseLeftDown;
 
-        public abstract void DrawPreview(DrawingContext context, Point start, Point privewEnd);
+        public abstract DrawObj CreatePreviewObj(Point start, Point end);
+        public abstract DrawObj CreateObj(Point start, Point end);
 
-        public abstract void Draw(DrawingContext context, Point start, Point end);
-
-        protected override void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        public override void MouseLeftButtonDown(Point point)
         {
-            Canvas.CaptureMouse();
-            start = e.GetPosition(Canvas);
             MouseLeftDown = true;
-        }
-        protected override void Canvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            MouseLeftDown = false;
-            (sender as DrawingCanvas).ReleaseMouseCapture();
-            MouseLeftDown = false;
-            var visual = new DrawingVisual();
-            var end = e.GetPosition(Canvas);
-            using var dc = visual.RenderOpen();
-            dc.PushGuidelineSet(new GuidelineSet(new[] { 0.5 }, new[] { 0.5 }));
-            Draw(dc, start, end);
-            Canvas.AddVisual(visual);
+            start = point;
         }
 
-        protected override void Canvas_MouseMove(object sender, MouseEventArgs e)
+        public override void MouseLeftButtonUp(Point point)
+        {
+            MouseLeftDown = false;
+            this.Map.ClearPreview();
+            var obj = CreateObj(start, point);
+            this.Map.AddObject(obj);
+        }
+
+        public override void MouseMove(Point point)
         {
             if (MouseLeftDown)
             {
-                var end = e.GetPosition(Canvas);
-                using var dc = previewVisual.RenderOpen();
-                dc.PushGuidelineSet(new GuidelineSet(new[] { 0.5 }, new[] { 0.5 }));
-                DrawPreview(dc, start, end);
+                this.Map.DrawPreview(CreatePreviewObj(start, point));
             }
         }
     }
 
     public class DrawRectAction : SingClickDrawAction
     {
-        public DrawRectAction(DrawingCanvas canvas) : base(canvas)
+        public DrawRectAction(DrawingMap canvas) : base(canvas)
         {
         }
 
-        public override void Draw(DrawingContext context, Point currentPoint)
+        public override DrawObj CreateObj(Point point)
         {
-            var pen = new Pen(Brushes.Black, 1);
-            context.DrawRectangle(null, pen, new Rect(currentPoint, currentPoint + new Vector(100, 100)));
+            return new RectObj(point, point + new Vector(20, 20));
         }
 
-        public override void DrawPreview(DrawingContext context, Point currentPoint)
+        public override DrawObj CreatePreviewObj(Point point)
         {
-
+            return new RectObj(point, point + new Vector(20, 20));
         }
     }
 
     internal class DrawLineAction : DragDrawAction
     {
-        public DrawLineAction(DrawingCanvas canvas) : base(canvas)
+        public DrawLineAction(DrawingMap canvas) : base(canvas)
         {
         }
 
-        public override void Draw(DrawingContext context, Point start, Point end)
+        public override DrawObj CreateObj(Point start, Point end)
         {
-            var pen = new Pen(Brushes.Black, 1);
-            context.DrawLine(pen, start, end);
+            return new LineObj(start, end);
         }
 
-        public override void DrawPreview(DrawingContext context, Point start, Point privewEnd)
+        public override DrawObj CreatePreviewObj(Point start, Point end)
         {
-            var pen = new Pen(Brushes.Black, 1);
-            context.DrawLine(pen, start, privewEnd);
+            return new LineObj(start, end);
         }
     }
 
-    internal class SelectionAction : ActionBase
+    class NormalAction : DrawActionBase
     {
-        private DrawSelectionRectAction drawSelectionRect;
-        private DrawSelectionObjectAction drawSelectionObject;
-
-        public List<DrawingVisual> Selection { get; private set; }
-        private bool Selected;
-
-        public SelectionAction(DrawingCanvas canvas) : base(canvas)
+        public NormalAction(DrawingMap map) : base(map)
         {
-            drawSelectionRect = new DrawSelectionRectAction(canvas);
-            drawSelectionObject = new DrawSelectionObjectAction(canvas);
+            this.Selections = new List<DrawObjVisual>();
         }
 
-        protected override void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            base.Canvas_MouseLeftButtonDown(sender, e);
-        }
+        public List<DrawObjVisual> Selections;
 
-        protected override void Canvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            base.Canvas_MouseLeftButtonUp(sender, e);
-            
-        }
 
-        protected override void Canvas_MouseMove(object sender, MouseEventArgs e)
-        {
-            base.Canvas_MouseMove(sender, e);
-        }
-
-        private void Select()
     }
 
-    internal class DrawMoveAction : DrawActionBase
-    {
-        public DrawMoveAction(DrawingCanvas canvas) : base(canvas)
-        {
-        }
+    //internal class DrawMoveAction : DrawActionBase
+    //{
+    //    public DrawMoveAction(DrawingCanvas canvas) : base(canvas)
+    //    {
+    //    }
 
-        public void Draw(Point start, Point end)
-        {
+    //    public void Draw(Point start, Point end)
+    //    {
 
-        }
-    }
-
-    internal class DrawSelectionRectAction : DrawBase
-    {
-        private bool MouseLeftDown;
-
-
-        public DrawSelectionRectAction(DrawingCanvas canvas) : base(canvas)
-        {
-        }
-
-        protected override void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            this.Selection = new List<DrawingVisual>();
-            base.Canvas_MouseLeftButtonDown(sender, e);
-        }
-        protected override void Canvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            MouseLeftDown = false;
-            using var dc = this.previewVisual.RenderOpen();
-            base.Canvas_MouseLeftButtonUp(sender, e);
-        }
-
-        public void Draw(Point start, Point end)
-        {
-            using var dc = base.RenderOpen(this.previewVisual);
-            var pen = new Pen(Brushes.Black, 1);
-            if (start.X > end.X)
-            {
-                pen.DashStyle = DashStyles.Dot;
-            }
-            dc.DrawRectangle(null, pen, new Rect(start, end));
-        }
-    }
-
-    internal class DrawSelectionObjectAction : DrawBase
-    {
-        public DrawSelectionObjectAction(DrawingCanvas canvas) : base(canvas)
-        {
-            this.previewVisual.Effect = new DropShadowEffect()
-            {
-                ShadowDepth = 0
-            };
-        }
-
-        public void Draw(List<DrawingVisual> visuals)
-        {
-            using var dc = this.previewVisual.RenderOpen();
-            foreach (var item in visuals)
-            {
-                dc.DrawDrawing(item.Drawing);
-            }
-        }
-    }
+    //    }
+    //}
 }
