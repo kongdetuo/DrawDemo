@@ -11,6 +11,8 @@ namespace DrawDemo
 {
     public class DrawingCanvas : Canvas
     {
+        private readonly List<DrawingLayer> drawingLayers = new List<DrawingLayer>();
+        private readonly List<int> layerVisualCounts = new List<int>();
         private readonly List<Visual> visuals = new List<Visual>();
 
         protected override int VisualChildrenCount => visuals.Count;
@@ -21,51 +23,50 @@ namespace DrawDemo
             return visuals[index];
         }
 
-        public DrawingConvasAdorner GetAdorner()
-        {
-            var adornerLayer = AdornerLayer.GetAdornerLayer(this);
 
-            var adorner = adornerLayer.GetAdorners(this)
-                ?.OfType<DrawingConvasAdorner>()
-                .FirstOrDefault();
-            if (adorner == null)
-            {
-                adorner = new DrawingConvasAdorner(this);
-                adorner.IsHitTestVisible = false;
-                adorner.ClipToBounds = true;
-                adornerLayer.Add(adorner);
-            }
-            return adorner;
-        }
 
-        public DrawingVisual GetVisual(Point point, int tol = 3)
+
+        public DrawingVisual GetVisual(Point point, Func<Visual, bool> filter = null, int tol = 3)
         {
-            var hitTestResult = VisualTreeHelper.HitTest(this, point);
-            var result = hitTestResult.VisualHit as DrawingVisual;
-            if (result == null)
-            {
-                var vec = new Vector(tol, tol);
-                var rect = new Rect(point - vec, point + vec);
-                var geo = new RectangleGeometry(rect);
-                VisualTreeHelper.HitTest(this, null, hitResult =>
-                {
-                    var geometryResult = hitResult as GeometryHitTestResult;
-                    result = geometryResult.VisualHit as DrawingVisual;
-                    return result == null ? HitTestResultBehavior.Continue : HitTestResultBehavior.Stop;
-                }, new GeometryHitTestParameters(geo));
-            }
+            //var hitTestResult = VisualTreeHelper.HitTest(this, point);
+            //var result = hitTestResult.VisualHit as DrawingVisual;
+            //if (result == null)
+            //{
+            DrawingVisual result = null;
+            var vec = new Vector(tol, tol);
+            var rect = new Rect(point - vec, point + vec);
+            var geo = new RectangleGeometry(rect);
+            VisualTreeHelper.HitTest(this, null, hitResult =>
+             {
+                 var geometryResult = hitResult as GeometryHitTestResult;
+                 result = geometryResult.VisualHit as DrawingVisual;
+
+                 if (result != null && filter?.Invoke(result) == true)
+                 {
+                     return HitTestResultBehavior.Stop;
+                 }
+                 return HitTestResultBehavior.Continue;
+             }, new GeometryHitTestParameters(geo));
+            //}
             return result;
         }
 
-        public List<DrawingVisual> GetVisuals(Geometry geometry, bool fullyInside = false, bool intersets = false, bool fullyContains = false)
+        public List<DrawingVisual> GetVisuals(Geometry geometry, Func<Visual,bool>filter, bool fullyInside = false, bool intersets = false, bool fullyContains = false)
         {
             var hits = new List<DrawingVisual>();
             VisualTreeHelper.HitTest(this, null, hitResult =>
             {
+                var tem = this.visuals;
                 var geometryResult = hitResult as GeometryHitTestResult;
                 var visual = geometryResult.VisualHit as DrawingVisual;
                 if (visual != null)
                 {
+                    if(filter(visual))
+                    {
+
+                    }
+                    
+
                     if (fullyInside && geometryResult.IntersectionDetail == IntersectionDetail.FullyInside)
                         hits.Add(visual);
                     else if (intersets && geometryResult.IntersectionDetail == IntersectionDetail.Intersects)
@@ -79,11 +80,14 @@ namespace DrawDemo
             return hits;
         }
 
-        public void AddVisual(Visual visual)
+        public void AddVisual(DrawingLayer layer, Visual visual)
         {
             if (visual == null)
                 return;
-            visuals.Add(visual);
+
+            var index = drawingLayers.TakeWhile(p => p != layer).Append(layer).Sum(p => layerVisualCounts[p.ID]);
+            visuals.Insert(index, visual);
+            layerVisualCounts[layer.ID]++;
             base.AddVisualChild(visual);
             base.AddLogicalChild(visual);
         }
@@ -107,5 +111,26 @@ namespace DrawDemo
                 base.RemoveLogicalChild(item);
             }
         }
+
+        public DrawingLayer AddDrawingLayer()
+        {
+            var layer = new DrawingLayer(drawingLayers.Count);
+            drawingLayers.Add(layer);
+            layerVisualCounts.Add(0);
+            return layer;
+        }
+    }
+
+    public class DrawingLayer
+    {
+        public DrawingLayer(int id)
+        {
+            this.ID = id;
+            this.CanHitTest = true;
+        }
+
+        public int ID { get; private set; }
+
+        public bool CanHitTest { get; set; }
     }
 }

@@ -70,7 +70,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="DrawingCanvas.cs" />
-    <Compile Include="DrawingConvasAdorner.cs" />
     <Compile Include="DrawingMap.cs" />
     <Compile Include="DrawObj.cs" />
     <Compile Include="EdgeObj.cs" />

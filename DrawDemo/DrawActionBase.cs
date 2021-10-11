@@ -6,76 +6,6 @@ using System.Windows.Media;
 
 namespace DrawDemo
 {
-    public abstract class DrawBase : ActionBase
-    {
-        protected DrawingVisual previewVisual { get; private set; }
-
-        public DrawBase(DrawingCanvas canvas) : base(canvas)
-        {
-            previewVisual = new DrawingVisual();
-            canvas.GetAdorner().AddVisual(previewVisual);
-        }
-
-
-
-
-        public override void Dispose()
-        {
-            base.Dispose();
-
-            Canvas.GetAdorner().RemoveVisual(previewVisual);
-        }
-
-        protected DrawingContext RenderOpen(DrawingVisual visual)
-        {
-            var dc = visual.RenderOpen();
-            dc.PushGuidelineSet(new GuidelineSet(new[] { 0.5 }, new[] { 0.5 }));
-            return dc;
-        }
-
-        public void Clear()
-        {
-            using var dc = this.previewVisual.RenderOpen();
-        }
-    }
-
-    public abstract class DrapDrawBase : DrawBase
-    {
-        public DrapDrawBase(DrawingCanvas canvas) : base(canvas)
-        {
-
-        }
-
-        private Point start;
-        protected bool MouseLeftDown;
-
-        public abstract void Draw(DrawingContext context, Point start, Point end);
-
-        protected override void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            Canvas.CaptureMouse();
-            start = e.GetPosition(Canvas);
-            MouseLeftDown = true;
-        }
-        protected override void Canvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            MouseLeftDown = false;
-            (sender as DrawingCanvas).ReleaseMouseCapture();
-            using var dc = previewVisual.RenderOpen();
-        }
-
-        protected override void Canvas_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (MouseLeftDown)
-            {
-                var end = e.GetPosition(Canvas);
-                using var dc = previewVisual.RenderOpen();
-                dc.PushGuidelineSet(new GuidelineSet(new[] { 0.5 }, new[] { 0.5 }));
-                Draw(dc, start, end);
-            }
-        }
-    }
-
     public abstract class ActionBase
     {
         public DrawingCanvas Canvas { get; }
@@ -158,7 +88,6 @@ namespace DrawDemo
         {
             this.Complated?.Invoke(this, EventArgs.Empty);
         }
-
     }
 
     public abstract class SingClickDrawAction : DrawActionBase
@@ -174,7 +103,7 @@ namespace DrawDemo
         public override void MouseLeftButtonUp(Point point)
         {
             var obj = CreateObj(point);
-            this.Map.AddObject(obj);
+            this.Map.AddObject(Map.ElementLayer, obj);
         }
 
         public override void MouseMove(Point point)
@@ -216,7 +145,7 @@ namespace DrawDemo
             MouseLeftDown = false;
             this.Map.ClearPreview();
             var obj = CreateObj(start, point);
-            this.Map.AddObject(obj);
+            this.Map.AddObject(Map.TagLayer, obj);
         }
 
         public override void MouseMove(Point point)
