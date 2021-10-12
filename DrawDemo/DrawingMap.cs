@@ -39,15 +39,13 @@ namespace DrawDemo
                     ShadowDepth = -1,
                 }
             };
-            SelectionRectVisual = new DrawingVisual();
+            SelectionRectVisual = new DrawObjVisual();
             PreviewVisual = new DrawObjVisual();
 
             canvas.AddVisual(this.PreviewLayer, PreviewVisual);
             canvas.AddVisual(this.PreviewSelectLayer, SelectObjectVisual);
             canvas.AddVisual(this.PreviewSelectLayer, SelectionRectVisual);
         }
-
-
 
         public DrawingLayer ElementLayer { get; private set; }
         public DrawingLayer TagLayer { get; private set; }
@@ -72,8 +70,10 @@ namespace DrawDemo
         private bool CtrlDown;
 
         private DrawingVisual SelectObjectVisual;
-        private DrawingVisual SelectionRectVisual;
+        private DrawObjVisual SelectionRectVisual;
         private DrawObjVisual PreviewVisual;
+
+        private Point SelectionStart; // 用的是元素坐标
 
         private void Canvas_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -171,15 +171,22 @@ namespace DrawDemo
             else
             {
                 Selecting = true;
+                SelectionStart = GetMousePosition(e);
             }
         }
 
         private Point PreviousPoint;
+        private Random Random = new Random();
         private void Canvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
             var point = e.GetPosition(this.Canvas);
             var vector = point - PreviousPoint;
             PreviousPoint = point;
+
+            if (CanvasMoving)
+            {
+                MoveAll(vector);
+            }
 
             if (Action != null)
             {
@@ -193,7 +200,9 @@ namespace DrawDemo
                 }
                 else if (Selecting)
                 {
-                    DrawSelectionRect(Start, point);
+                    SelectionRectVisual.Object = new SelectionRectObj(SelectionStart, GetMousePosition(e));
+                    Draw(SelectionRectVisual, this.Transform);
+                    //DrawSelectionRect(Start, point,this.transform);
                     var selection = Select(Start, point);
                     if (this.CtrlDown)
                         this.Selection.AddRange(selection);
@@ -204,13 +213,13 @@ namespace DrawDemo
             }
             else
             {
+                var selection = Select(point, point);
+
                 DrawSelectionObject(Select(point, point).Concat(this.Selection).ToList());
-            }
+                if (selection.Count > 0)
+                {
 
-
-            if (CanvasMoving)
-            {
-                MoveAll(vector);
+                }
             }
         }
 
@@ -270,8 +279,6 @@ namespace DrawDemo
         public DrawingCanvas Canvas { get; private set; }
         public DrawActionBase Action { get; private set; }
 
-
-        public double PenThickness { get; private set; } = 1;
         public Transform Transform { get => transform; set => transform = value; }
 
         internal void DoAction(DrawActionBase drawRectAction)
@@ -334,8 +341,6 @@ namespace DrawDemo
         }
         public void ClearPreview()
         {
-            if (this.PreviewVisual == null)
-                return;
             PreviewVisual.Object = null;
             using var dc = PreviewVisual.RenderOpen();
         }
@@ -348,8 +353,8 @@ namespace DrawDemo
                 Draw(visual, transform);
             }
 
-            if (PreviewVisual != null)
-                Draw(PreviewVisual, transform);
+            Draw(PreviewVisual, transform);
+            Draw(SelectionRectVisual, transform);
             DrawSelectionObject();
         }
 
@@ -357,15 +362,26 @@ namespace DrawDemo
         {
             if (visual.Object != null)
             {
-                Draw(visual, visual.Object, visual.Object.FillColor, new Pen(visual.Object.BorderColor, PenThickness), transform);
+                Draw(visual, visual.Object, visual.Object.FillColor, visual.Object.Pen, transform);
             }
         }
+
         private void Draw(DrawingVisual visual, DrawObj obj, Brush FillBrush, Pen pen, Transform transform)
         {
-            if (obj != null)
+            var geo = obj?.GetGeometry()?.Clone();
+            if (geo != null)
             {
-                var geo = obj.GetGeometry().Clone();
-                geo.Transform = transform;
+                if (geo.Transform == null)
+                    geo.Transform = transform;
+                else
+                    geo.Transform = new TransformGroup()
+                    {
+                        Children = new TransformCollection()
+                        {
+                            geo.Transform,
+                            transform,
+                        }
+                    };
 
                 var guideLines = new GuidelineSet();
                 guideLines.GuidelinesX = new DoubleCollection();
@@ -376,8 +392,10 @@ namespace DrawDemo
                 guideLines.GuidelinesY.Add(rect.Y + rect.Height + 0.5);
 
                 using var dc = visual.RenderOpen();
+
+
                 dc.PushGuidelineSet(guideLines);
-                dc.DrawGeometry(obj.FillColor, new Pen(obj.BorderColor, PenThickness), geo);
+                dc.DrawGeometry(FillBrush, pen, geo);
             }
         }
         private List<DrawObjVisual> Select(Point start, Point end)
@@ -396,11 +414,11 @@ namespace DrawDemo
             var geo = new RectangleGeometry(new Rect(start, end));
             if (end.X < start.X)
             {
-                return this.Canvas.GetVisuals(geo, p => p == PreviewVisual, true, true, true).OfType<DrawObjVisual>().ToList();
+                return this.Canvas.GetVisuals(geo, CanSelect, true, true, true).OfType<DrawObjVisual>().ToList();
             }
             else
             {
-                return this.Canvas.GetVisuals(geo, p => p == PreviewVisual, true, false, false).OfType<DrawObjVisual>().ToList();
+                return this.Canvas.GetVisuals(geo, CanSelect, true, false, false).OfType<DrawObjVisual>().ToList();
             }
         }
 
@@ -431,29 +449,22 @@ namespace DrawDemo
             }
         }
 
-        public void DrawSelectionRect(Point start, Point end)
-        {
-            using var dc = this.SelectionRectVisual.RenderOpen();
-            dc.PushGuidelineSet(new GuidelineSet(new[] { 0.5 }, new[] { 0.5 }));
-            if ((end - start).LengthSquared > 1)
-            {
-                var pen = new Pen(Brushes.Black, 1);
-
-                if (start.X > end.X)
-                {
-                    pen.DashStyle = DashStyles.Dot;
-                }
-
-                dc.DrawRectangle(null, pen, new Rect(start, end));
-            }
-        }
-
         private bool CanSelect(Visual visual)
         {
             return visual != this.SelectionRectVisual
                 && visual != this.SelectObjectVisual
                 && visual != this.PreviewVisual;
         }
+    }
+
+    public class SelectedVisualsChangedArgs : EventArgs
+    {
+        public SelectedVisualsChangedArgs(List<DrawingVisual> visuals)
+        {
+            this.SelectedVisuals = visuals;
+        }
+
+        public List<DrawingVisual> SelectedVisuals { get; private set; }
     }
 }
 

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DrawDemo"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="DrawDemo" Height="450" Width="800">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="100"/>
@@ -19,12 +19,13 @@
             <RadioButton x:Name="multiSelect" Checked="MultiSelect_Checked" Content="选择"/>
             <RadioButton x:Name="drawRectagle" Checked="DrawRectagle_Checked" Content="绘制矩形"/>
             <RadioButton x:Name="drawLine" Checked="DrawLine_Checked" Unchecked="Unchecked"  Content="绘制线条"/>
+            <RadioButton x:Name="drawText" Checked="drawText_Checked" Unchecked="Unchecked"  Content="绘制文字"/>
             <Label Name="label1"/>
         </StackPanel>
-
-        <local:DrawingCanvas Grid.Column="1" x:Name="drawingSurface" Background="LightGray" 
-                             ClipToBounds="True"/>
-
+        <local:DrawingCanvas  Grid.Column="1" x:Name="drawingSurface" Background="AliceBlue" ClipToBounds="True"/>
+        <Canvas Grid.Column="1">
+            
+        </Canvas>
 
         <TextBlock Name="aaa" Text="111" Grid.Column="1" Grid.Row="2"/>
     </Grid>

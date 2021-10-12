@@ -11,6 +11,11 @@ namespace DrawDemo
 {
     public class DrawingCanvas : Canvas
     {
+
+        public DrawingCanvas()
+        {
+            Background = Brushes.White;
+        }
         private readonly List<DrawingLayer> drawingLayers = new List<DrawingLayer>();
         private readonly List<int> layerVisualCounts = new List<int>();
         private readonly List<Visual> visuals = new List<Visual>();
@@ -22,9 +27,6 @@ namespace DrawDemo
         {
             return visuals[index];
         }
-
-
-
 
         public DrawingVisual GetVisual(Point point, Func<Visual, bool> filter = null, int tol = 3)
         {
@@ -51,7 +53,7 @@ namespace DrawDemo
             return result;
         }
 
-        public List<DrawingVisual> GetVisuals(Geometry geometry, Func<Visual,bool>filter, bool fullyInside = false, bool intersets = false, bool fullyContains = false)
+        public List<DrawingVisual> GetVisuals(Geometry geometry, Func<Visual, bool> filter, bool fullyInside = false, bool intersets = false, bool fullyContains = false)
         {
             var hits = new List<DrawingVisual>();
             VisualTreeHelper.HitTest(this, null, hitResult =>
@@ -59,14 +61,8 @@ namespace DrawDemo
                 var tem = this.visuals;
                 var geometryResult = hitResult as GeometryHitTestResult;
                 var visual = geometryResult.VisualHit as DrawingVisual;
-                if (visual != null)
+                if (visual != null && filter?.Invoke(visual) == true)
                 {
-                    if(filter(visual))
-                    {
-
-                    }
-                    
-
                     if (fullyInside && geometryResult.IntersectionDetail == IntersectionDetail.FullyInside)
                         hits.Add(visual);
                     else if (intersets && geometryResult.IntersectionDetail == IntersectionDetail.Intersects)
@@ -119,6 +115,30 @@ namespace DrawDemo
             layerVisualCounts.Add(0);
             return layer;
         }
+
+        public void RemoveDrawingLayer(DrawingLayer layer)
+        {
+            if (drawingLayers.Contains(layer))
+            {
+                int i = 0;
+                for (; i < layer.ID; i++)
+                {
+                    i += layerVisualCounts[i];
+                }
+
+                if(layerVisualCounts[i] > 0)
+                {
+                    for (int j = layerVisualCounts[i] - 1; j >= 0; j--)
+                    {
+                        RemoveVisual(visuals[j]);
+                    }
+                }
+
+                layerVisualCounts[i] = 0;
+                // 删除所有Visual就行了，layer本身不用删掉
+            }
+        }
+
     }
 
     public class DrawingLayer

@@ -6,48 +6,6 @@ using System.Windows.Media;
 
 namespace DrawDemo
 {
-    public abstract class ActionBase
-    {
-        public DrawingCanvas Canvas { get; }
-
-
-        public ActionBase(DrawingCanvas canvas)
-        {
-            this.Canvas = canvas;
-
-            canvas.MouseLeftButtonDown += Canvas_MouseLeftButtonDown;
-            canvas.MouseLeftButtonUp += Canvas_MouseLeftButtonUp;
-            canvas.MouseMove += Canvas_MouseMove;
-        }
-
-        protected virtual void Canvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-
-        }
-
-        protected virtual void Canvas_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-
-        }
-
-        protected virtual void Canvas_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-
-        }
-
-        protected Point GetCurrentPoint(MouseEventArgs e)
-        {
-            return e.GetPosition(this.Canvas);
-        }
-
-        public virtual void Dispose()
-        {
-            Canvas.MouseLeftButtonDown -= Canvas_MouseLeftButtonDown;
-            Canvas.MouseLeftButtonUp -= Canvas_MouseLeftButtonUp;
-            Canvas.MouseMove -= Canvas_MouseMove;
-        }
-    }
-
     public abstract class DrawActionBase
     {
         public DrawingMap Map { get; private set; }
@@ -171,6 +129,23 @@ namespace DrawDemo
         public override DrawObj CreatePreviewObj(Point point)
         {
             return new RectObj(point, point + new Vector(20, 20));
+        }
+    }
+
+    public class DrawTextAction : SingClickDrawAction
+    {
+        public DrawTextAction(DrawingMap canvas) : base(canvas)
+        {
+        }
+
+        public override DrawObj CreateObj(Point point)
+        {
+            return new TextObj(point, "测试文字");
+        }
+
+        public override DrawObj CreatePreviewObj(Point point)
+        {
+            return new TextObj(point, "测试文字");
         }
     }
 

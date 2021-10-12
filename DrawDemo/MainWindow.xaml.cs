@@ -49,5 +49,10 @@ namespace DrawDemo
         {
 
         }
+
+        private void drawText_Checked(object sender, RoutedEventArgs e)
+        {
+            this.DrawMap.DoAction(new DrawTextAction(this.DrawMap));
+        }
     }
 }
