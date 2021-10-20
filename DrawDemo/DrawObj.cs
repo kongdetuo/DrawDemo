@@ -40,10 +40,16 @@ namespace DrawDemo
 
         public Point Start { get; private set; }
         public Point End { get; private set; }
+        public RectangleGeometry Geometry { get; private set; }
 
         public override Geometry GetGeometry()
         {
-            return new RectangleGeometry(new Rect(Start, End));
+            if (this.Geometry == null)
+            {
+                this.Geometry = new RectangleGeometry(new Rect(Start, End));
+                this.Geometry.Freeze();
+            }
+            return Geometry;
         }
     }
     public class LineObj : DrawObj
@@ -72,31 +78,47 @@ namespace DrawDemo
             this.Text = text;
             this.Location = point;
             this.FillColor = Brushes.Black;
+            this.FormatText= new FormattedText(Text,
+                System.Globalization.CultureInfo.CurrentUICulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                16,
+                this.FillColor,
+                1);
         }
 
         public string Text { get; }
 
         public Point Location { get; set; }
+        public FormattedText FormatText { get; private set; }
 
-        public override Geometry GetGeometry()
-        {
-            var typeFace = new Typeface(
+        private Geometry geometry;
+
+        private static Typeface typeface = new Typeface(
                     fontFamily: new FontFamily("宋体"),
                     style: FontStyles.Normal,
                     weight: FontWeights.Normal,
                     stretch: FontStretches.Normal);
 
+        private Geometry getGeometry()
+        {
             var formatText = new FormattedText(Text,
                 System.Globalization.CultureInfo.CurrentUICulture,
                 FlowDirection.LeftToRight,
-                typeFace,
+                typeface,
                 16,
                 this.FillColor,
                 1);
             var geo = formatText.BuildGeometry(Location);
-            geo.Transform = new RotateTransform(45, Location.X, Location.Y);
-       
+            //geo.Transform = new RotateTransform(45, Location.X, Location.Y);
             return geo;
+        }
+
+        public override Geometry GetGeometry()
+        {
+            if (geometry == null)
+                geometry = getGeometry();
+            return geometry;
         }
     }
 
@@ -137,5 +159,18 @@ namespace DrawDemo
         public DrawObj Object { get; set; }
     }
 
+    public static class Ex
+    {
+        public static T MakeFreeze<T>(this T freezable)
+            where T : Freezable
+        {
+            freezable.Freeze();
+            return freezable;
+        }
 
+        public static Geometry GetTransformed(this Geometry geometry, Transform transform)
+        {
+            return Geometry.Combine(Geometry.Empty, geometry, GeometryCombineMode.Union, transform);
+        }
+    }
 }

@@ -24,7 +24,7 @@ namespace DrawDemo
             Window.GetWindow(this.Canvas).PreviewKeyDown += Canvas_PreviewKeyDown;
             Window.GetWindow(this.Canvas).PreviewKeyUp += Canvas_PreviewKeyUp;
 
-            Transform = Transform.Identity;
+            Transform = new ScaleTransform(1, 1);
 
             this.ElementLayer = canvas.AddDrawingLayer();
             this.TagLayer = canvas.AddDrawingLayer();
@@ -41,10 +41,22 @@ namespace DrawDemo
             };
             SelectionRectVisual = new DrawObjVisual();
             PreviewVisual = new DrawObjVisual();
+            testVisual = new DrawingVisual();
 
+            canvas.AddVisual(this.PreviewLayer, testVisual);
             canvas.AddVisual(this.PreviewLayer, PreviewVisual);
             canvas.AddVisual(this.PreviewSelectLayer, SelectObjectVisual);
             canvas.AddVisual(this.PreviewSelectLayer, SelectionRectVisual);
+            //DrawingBrush drawingBrush = new DrawingBrush();
+            //RenderOptions.SetCachingHint(drawingBrush, CachingHint.Cache);
+
+            for (int i = 0; i < 10; i++)
+            {
+                for (int j = 0; j < 10; j++)
+                {
+                    AddObject(new RectObj(new Point(i * 20, j * 20), new Point(i * 20 + 16, j * 20 + 16)));
+                }
+            }
         }
 
         public DrawingLayer ElementLayer { get; private set; }
@@ -72,6 +84,8 @@ namespace DrawDemo
         private DrawingVisual SelectObjectVisual;
         private DrawObjVisual SelectionRectVisual;
         private DrawObjVisual PreviewVisual;
+
+        public DrawingVisual testVisual { get; private set; }
 
         private Point SelectionStart; // 用的是元素坐标
 
@@ -348,15 +362,48 @@ namespace DrawDemo
         private void DrawAll()
         {
             var transform = this.Transform;
-            foreach (var visual in visuals)
+            transform.Freeze();
+            var stop = System.Diagnostics.Stopwatch.StartNew();
+            //var list = visuals
+            //    .Select(p => (p, p.Object, p.Object.GetGeometry().GetTransformed(transform).MakeFreeze()))
+            //    .ToList();
+            using var dc = testVisual.RenderOpen();
+            foreach (var item in visuals)
             {
-                Draw(visual, transform);
+
+                var geo = item.Object.GetGeometry();
+                if (NeedDraw(geo, transform))
+                {
+                    geo = geo.MakeFreeze().GetTransformed(transform).MakeFreeze();
+                    Draw(item, geo, item.Object.FillColor, item.Object.Pen);
+                }
+                else
+                {
+                    using var dc1 = item.RenderOpen();
+                }
+
             }
+            System.Diagnostics.Debug.WriteLine(stop.ElapsedMilliseconds);
 
             Draw(PreviewVisual, transform);
             Draw(SelectionRectVisual, transform);
             DrawSelectionObject();
         }
+
+        private bool NeedDraw(Geometry geometry, Transform transform)
+        {
+            var rect = transform.TransformBounds(geometry.Bounds);
+            return NeedDraw(rect);
+        }
+
+        private bool NeedDraw(Rect rect)
+        {
+            return rect.Bottom > 0
+                && rect.Top < this.Canvas.ActualHeight
+                && rect.Left < this.Canvas.ActualWidth
+                && rect.Right > 0;
+        }
+
 
         private void Draw(DrawObjVisual visual, Transform transform)
         {
@@ -397,6 +444,36 @@ namespace DrawDemo
                 dc.PushGuidelineSet(guideLines);
                 dc.DrawGeometry(FillBrush, pen, geo);
             }
+        }
+
+        private void Draw(DrawingVisual visual, Geometry geo, Brush FillBrush, Pen pen)
+        {
+            //var guideLines = new GuidelineSet();
+            //guideLines.GuidelinesX = new DoubleCollection();
+            //var rect = geo.Bounds;
+            //guideLines.GuidelinesX.Add(rect.X + 0.5);
+            //guideLines.GuidelinesX.Add(rect.X + rect.Width + 0.5);
+            //guideLines.GuidelinesY.Add(rect.Y + 0.5);
+            //guideLines.GuidelinesY.Add(rect.Y + rect.Height + 0.5);
+
+            using var dc = visual.RenderOpen();
+
+
+            //dc.PushGuidelineSet(guideLines);
+            dc.DrawGeometry(FillBrush, pen, geo);
+        }
+        private void Draw(DrawingContext dc, Geometry geo, Brush FillBrush, Pen pen)
+        {
+            //var guideLines = new GuidelineSet();
+            //guideLines.GuidelinesX = new DoubleCollection();
+            //guideLines.GuidelinesX.Add(rect.X + 0.5);
+            //guideLines.GuidelinesX.Add(rect.X + rect.Width + 0.5);
+            //guideLines.GuidelinesY.Add(rect.Y + 0.5);
+            //guideLines.GuidelinesY.Add(rect.Y + rect.Height + 0.5);
+
+            //dc.PushGuidelineSet(guideLines);
+           
+            dc.DrawGeometry(FillBrush, pen, geo);
         }
         private List<DrawObjVisual> Select(Point start, Point end)
         {
