@@ -26,24 +26,21 @@ namespace DrawDemo
             InitializeComponent();
             var dpi = VisualTreeHelper.GetDpi(this);
             label1.Content = dpi.DpiScaleX;
-            DrawMap = new DrawingMap(this.drawingSurface);
         }
 
         private void DrawRectagle_Checked(object sender, RoutedEventArgs e)
         {
-            this.DrawMap.DoAction(new DrawRectAction(this.DrawMap));
+            this.drawingCanvas.DoAction(new DrawRectAction(this.drawingCanvas));
         }
 
         private void MultiSelect_Checked(object sender, RoutedEventArgs e)
         {
-            this.DrawMap.DoAction(null);
+            this.drawingCanvas.DoAction(null);
         }
         private void DrawLine_Checked(object sender, RoutedEventArgs e)
         {
-            this.DrawMap.DoAction(new DrawLineAction(this.DrawMap));
+            this.drawingCanvas.DoAction(new DrawLineAction(this.drawingCanvas));
         }
-
-        private DrawingMap DrawMap ;
 
         private void Unchecked(object sender, RoutedEventArgs e)
         {
@@ -52,7 +49,7 @@ namespace DrawDemo
 
         private void drawText_Checked(object sender, RoutedEventArgs e)
         {
-            this.DrawMap.DoAction(new DrawTextAction(this.DrawMap));
+            this.drawingCanvas.DoAction(new DrawTextAction(this.drawingCanvas));
         }
     }
 }

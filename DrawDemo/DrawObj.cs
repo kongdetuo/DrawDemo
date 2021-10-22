@@ -35,7 +35,7 @@ namespace DrawDemo
             this.Start = start;
             this.End = end;
             this.FillColor = Brushes.Gray;
-            this.Pen = new Pen(Brushes.Black, PenThickness);
+            this.Pen = new Pen(Brushes.Black, 2);
         }
 
         public Point Start { get; private set; }
@@ -47,7 +47,6 @@ namespace DrawDemo
             if (this.Geometry == null)
             {
                 this.Geometry = new RectangleGeometry(new Rect(Start, End));
-                this.Geometry.Freeze();
             }
             return Geometry;
         }
@@ -78,7 +77,7 @@ namespace DrawDemo
             this.Text = text;
             this.Location = point;
             this.FillColor = Brushes.Black;
-            this.FormatText= new FormattedText(Text,
+            this.FormatText = new FormattedText(Text,
                 System.Globalization.CultureInfo.CurrentUICulture,
                 FlowDirection.LeftToRight,
                 typeface,
@@ -154,9 +153,35 @@ namespace DrawDemo
         public DrawObjVisual(DrawObj draw)
         {
             this.Object = draw;
+            this.Brush = draw.FillColor;
+            this.Pen = draw.Pen;
         }
 
         public DrawObj Object { get; set; }
+
+        public Geometry Geometry { get; set; }
+
+        public Brush Brush { get; set; }
+
+        public Pen Pen { get; set; }
+    }
+    internal class MultiDrawObjVisual : DrawObjVisual
+    {
+        private GeometryGroup Group = new GeometryGroup();
+        public MultiDrawObjVisual()
+        {
+            Group = new GeometryGroup();
+            this.Geometry = Group;
+        }
+
+        public void UpdateObjs(IEnumerable<Geometry> geometries)
+        {
+            this.Group.Children.Clear();
+            foreach (var item in geometries)
+            {
+                this.Group.Children.Add(item);
+            }
+        }
     }
 
     public static class Ex
@@ -170,7 +195,29 @@ namespace DrawDemo
 
         public static Geometry GetTransformed(this Geometry geometry, Transform transform)
         {
-            return Geometry.Combine(Geometry.Empty, geometry, GeometryCombineMode.Union, transform);
+            Transform transform2 = geometry.Transform;
+            geometry = geometry.Clone();
+            if (transform != null && !transform.Value.IsIdentity)
+            {
+                if (transform2 == null || transform2.Value.IsIdentity)
+                {
+                    geometry.Transform = transform;
+                }
+                else
+                {
+                    geometry.Transform = new MatrixTransform(transform2.Value * transform.Value);
+                }
+            }
+
+            return geometry;
+            //return Geometry.Combine(Geometry.Empty, geometry, GeometryCombineMode.Union, transform);
+        }
+
+        public static Matrix GetInverse(this Matrix matrix)
+        {
+            var m = Matrix.Identity * matrix;
+            m.Invert();
+            return m;
         }
     }
 }

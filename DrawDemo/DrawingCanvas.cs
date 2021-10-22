@@ -139,6 +139,9 @@ namespace DrawDemo
             }
         }
 
+        public Vector Offset { get => VisualOffset; set => VisualOffset = value; }
+
+        public Transform VTrans { get => VisualTransform; set => VisualTransform = value; }
     }
 
     public class DrawingLayer

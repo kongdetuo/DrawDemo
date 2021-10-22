@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DrawDemo"
         mc:Ignorable="d"
-        Title="DrawDemo" Height="450" Width="800">
+        Title="DrawDemo" Height="450" Width="800" >
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="100"/>
@@ -22,10 +22,8 @@
             <RadioButton x:Name="drawText" Checked="drawText_Checked" Unchecked="Unchecked"  Content="绘制文字"/>
             <Label Name="label1"/>
         </StackPanel>
-        <local:DrawingCanvas  Grid.Column="1" x:Name="drawingSurface" Background="AliceBlue" ClipToBounds="True"/>
-        <Canvas Grid.Column="1">
-            
-        </Canvas>
+
+        <local:DrawingMap Grid.Column="1" x:Name="drawingCanvas" Background="White" ClipToBounds="True"/>
 
         <TextBlock Name="aaa" Text="111" Grid.Column="1" Grid.Row="2"/>
     </Grid>
