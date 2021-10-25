@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Shapes;
 
 namespace DrawDemo
 {
@@ -19,15 +21,15 @@ namespace DrawDemo
 
         public DrawingMap()
         {
-            var canvas = new DrawingCanvas();
+            var drawingHost = new DrawingCanvas();
             var grid = new Grid();
             this.Content = grid;
-            grid.Children.Add(canvas);
-            this.Canvas = canvas;
-            var topCanvas = new Canvas();
+            grid.Children.Add(drawingHost);
+            this.DrawingHost = drawingHost;
+            this. topCanvas = new Canvas();
             grid.Children.Add(topCanvas);
             topCanvas.Children.Add(text);
-            this.Canvas.SnapsToDevicePixels = true;
+            this.DrawingHost.SnapsToDevicePixels = true;
 
             this.ScaleTransform = new ScaleTransform(1, -1);
             this.TranslateTransform = new TranslateTransform();
@@ -41,10 +43,10 @@ namespace DrawDemo
             };
 
 
-            this.ElementLayer = canvas.AddDrawingLayer();
-            this.TagLayer = canvas.AddDrawingLayer();
-            this.PreviewSelectLayer = canvas.AddDrawingLayer();
-            this.PreviewLayer = canvas.AddDrawingLayer();
+            this.ElementLayer = drawingHost.AddDrawingLayer();
+            this.TagLayer = drawingHost.AddDrawingLayer();
+            this.PreviewSelectLayer = drawingHost.AddDrawingLayer();
+            this.PreviewLayer = drawingHost.AddDrawingLayer();
 
             SelectObjectVisual = new MultiDrawObjVisual()
             {
@@ -62,10 +64,10 @@ namespace DrawDemo
             //SelectionRectVisual.Transform = TranslateTransform;
             //PreviewVisual.Transform = TranslateTransform;
             //testVisual.Transform = TranslateTransform;
-            canvas.AddVisual(this.PreviewLayer, testVisual);
-            canvas.AddVisual(this.PreviewLayer, PreviewVisual);
-            canvas.AddVisual(this.PreviewSelectLayer, SelectObjectVisual);
-            canvas.AddVisual(this.PreviewSelectLayer, SelectionRectVisual);
+            drawingHost.AddVisual(this.PreviewLayer, testVisual);
+            drawingHost.AddVisual(this.PreviewLayer, PreviewVisual);
+            drawingHost.AddVisual(this.PreviewSelectLayer, SelectObjectVisual);
+            drawingHost.AddVisual(this.PreviewSelectLayer, SelectionRectVisual);
 
             this.PreviewGeometry = new GeometryGroup();
             this.PreviewGeometry.Transform = this.Transform;
@@ -73,16 +75,8 @@ namespace DrawDemo
             Draw(PreviewVisual);
             Draw(SelectObjectVisual);
 
-            //DrawingBrush drawingBrush = new DrawingBrush();
-            //RenderOptions.SetCachingHint(drawingBrush, CachingHint.Cache);
+            new TestPerformance(this, this.DrawingHost, this.Transform);
 
-            for (int i = 0; i < 10; i++)
-            {
-                for (int j = 0; j < 10; j++)
-                {
-                    AddObject(new RectObj(new Point(i * 20, j * 20), new Point(i * 20 + 16, j * 20 + 16)));
-                }
-            }
             this.Loaded += DrawingMap_Loaded;
 
         }
@@ -117,6 +111,7 @@ namespace DrawDemo
         private DrawObjVisual PreviewVisual;
 
         public ScaleTransform ScaleTransform { get; private set; }
+        GuidelineSet guidelineSet = new GuidelineSet();
 
         public double Scale
         {
@@ -126,6 +121,24 @@ namespace DrawDemo
                 scale = value;
                 this.ScaleTransform.ScaleX = value;
                 this.ScaleTransform.ScaleY = -value;
+
+
+                //var xs = new HashSet<double>();
+                //var ys = new HashSet<double>();
+                //foreach (var item in this.visuals)
+                //{
+                //    if (item.Drawing != null)
+                //    {
+                //        var rect = this.Transform.TransformBounds(item.Object.GetGeometry().Bounds);
+                //        xs.Add((rect.Left));
+                //        xs.Add((rect.Right));
+                //        ys.Add((rect.Top));
+                //        ys.Add((rect.Bottom));
+                //    }
+                //}
+                //guidelineSet.GuidelinesX = new DoubleCollection(xs.Select(p => p + 0.5));
+                //guidelineSet.GuidelinesY = new DoubleCollection(ys.Select(p => p + 0.5));
+
             }
         }
 
@@ -133,7 +146,7 @@ namespace DrawDemo
         private TranslateTransform TranslateTransform;
 
         public TransformGroup Transform { get; }
-        private GuidelineSet GuidelineSet { get; set; } = new GuidelineSet();
+
         public Vector Translate
         {
             get => translate;
@@ -142,7 +155,6 @@ namespace DrawDemo
                 translate = value;
                 this.TranslateTransform.X = value.X;
                 this.TranslateTransform.Y = value.Y;
-
             }
         }
 
@@ -171,21 +183,24 @@ namespace DrawDemo
 
         protected override void OnMouseDown(MouseButtonEventArgs e)
         {
-            this.CaptureMouse();
-            if (e.ChangedButton == MouseButton.Middle)
+            if (e.ClickCount == 1)
             {
-                CanvasMoving = true;
+                this.CaptureMouse();
+                if (e.ChangedButton == MouseButton.Middle)
+                {
+                    CanvasMoving = true;
+                }
             }
-            base.OnMouseDown(e);
-        }
+            else if (e.ClickCount == 2)
+            {
+                if (e.ChangedButton == MouseButton.Middle)
+                {
+                    Zoom();
+                }
 
-        protected override void OnMouseDoubleClick(MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left)
-            {
-                this.Zoom();
             }
-            base.OnMouseDoubleClick(e);
+
+            base.OnMouseDown(e);
         }
 
         protected override void OnMouseUp(MouseButtonEventArgs e)
@@ -202,7 +217,7 @@ namespace DrawDemo
         {
             lock (lockObj)
             {
-                var p = e.GetPosition(Canvas);                          //当前视图坐标点
+                var p = e.GetPosition(DrawingHost);                          //当前视图坐标点
                 var scaleCenter = this.Transform.Inverse.Transform(p);// 当前真实坐标点
 
                 var scale = this.Scale + e.Delta * 0.001;
@@ -218,7 +233,7 @@ namespace DrawDemo
 
         protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
         {
-            End = e.GetPosition(this.Canvas);
+            End = e.GetPosition(this.DrawingHost);
             if (Action != null)
             {
                 Action?.MouseLeftButtonUp(GetMousePosition(e));
@@ -249,14 +264,14 @@ namespace DrawDemo
         protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
         {
             IsMouseDown = true;
-            Start = e.GetPosition(this.Canvas);
+            Start = e.GetPosition(this.DrawingHost);
             PreviousPoint = Start;
 
             if (Action != null)
             {
                 Action?.MouseLeftButtonDown(GetMousePosition(e));
             }
-            else if (this.Selection != null && this.Selection.Count > 0 && this.Selection.Contains(this.Canvas.GetVisual(Start, CanSelect)))
+            else if (this.Selection != null && this.Selection.Count > 0 && this.Selection.Contains(this.DrawingHost.GetVisual(Start, CanSelect)))
             {
                 ObjectMoving = true;
             }
@@ -274,7 +289,7 @@ namespace DrawDemo
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
-            var point = e.GetPosition(this.Canvas);
+            var point = e.GetPosition(this.DrawingHost);
             var vector = point - PreviousPoint;
             PreviousPoint = point;
 
@@ -295,8 +310,8 @@ namespace DrawDemo
                 }
                 else if (Selecting)
                 {
-                    SelectionRectVisual.Object = new SelectionRectObj(SelectionStart, GetMousePosition(e));
-                    Draw(SelectionRectVisual);
+                    //SelectionRectVisual.Object = new SelectionRectObj(SelectionStart, GetMousePosition(e));
+                    //Draw(SelectionRectVisual);
                     //DrawSelectionRect(Start, point,this.transform);
                     var selection = Select(Start, point);
                     if (this.CtrlDown)
@@ -341,7 +356,8 @@ namespace DrawDemo
 
         private readonly object lockObj = new object();
 
-        public DrawingCanvas Canvas { get; private set; }
+        public DrawingCanvas DrawingHost { get; private set; }
+        public Canvas topCanvas { get; }
         public DrawActionBase Action { get; private set; }
 
 
@@ -361,7 +377,7 @@ namespace DrawDemo
 
         public Point GetMousePosition(MouseEventArgs e)
         {
-            var point = e.GetPosition(this.Canvas);
+            var point = e.GetPosition(this.DrawingHost);
             return this.Transform.Inverse.Transform(point);
         }
 
@@ -382,11 +398,14 @@ namespace DrawDemo
 
             geo.Transform = transform;
             visual.Geometry = geo;
-            //visual.XSnappingGuidelines = new DoubleCollection(new[] { 0.5 });
-            //visual.YSnappingGuidelines = new DoubleCollection(new[] { 0.5 });
+            var rect = obj.GetGeometry().Bounds;
+            visual.XSnappingGuidelines = new DoubleCollection(new[] { 0.5 + (rect.Left), 0.5 + rect.Right });
+            visual.YSnappingGuidelines = new DoubleCollection(new[] { 0.5 + rect.Top, 0.5 + rect.Bottom });
+
+
 
             Draw(visual);
-            this.Canvas.AddVisual(layer, visual);
+            this.DrawingHost.AddVisual(layer, visual);
             this.visuals.Add(visual);
 
 
@@ -400,7 +419,7 @@ namespace DrawDemo
         public void Remove(DrawObj obj)
         {
             var visual = visuals.Find(p => p.Object == obj);
-            this.Canvas.RemoveVisual(visual);
+            this.DrawingHost.RemoveVisual(visual);
             this.visuals.Remove(visual);
         }
 
@@ -439,36 +458,15 @@ namespace DrawDemo
         private void Draw(DrawObjVisual visual)
         {
 
-                Draw(visual, visual.Geometry, visual.Brush, visual.Pen);
-                //Draw(visual, visual.Object, visual.Object.FillColor, visual.Object.Pen, new ScaleTransform(this.Scale, -this.Scale));
+            Draw(visual, visual.Geometry, visual.Brush, visual.Pen);
+            //Draw(visual, visual.Object, visual.Object.FillColor, visual.Object.Pen, new ScaleTransform(this.Scale, -this.Scale));
+
+
 
         }
 
-        private void Draw(DrawObjVisual visual, Transform transform)
-        {
-            if (visual.Geometry != null)
-            {
-                Draw(visual, visual.Brush, visual.Pen, visual.Geometry);
-            }
-        }
 
-        private void Draw(DrawingVisual visual, Brush FillBrush, Pen pen, Geometry geometry)
-        {
-            //var guideLines = new GuidelineSet();
-            //guideLines.GuidelinesX = new DoubleCollection();
-            //var rect = geometry.Bounds;
-            //guideLines.GuidelinesX.Add(rect.X + 0.5);
-            //guideLines.GuidelinesX.Add(rect.X + rect.Width + 0.5);
-            //guideLines.GuidelinesY.Add(rect.Y + 0.5);
-            //guideLines.GuidelinesY.Add(rect.Y + rect.Height + 0.5);
 
-            using (var dc = visual.RenderOpen())
-            {
-                dc.PushGuidelineSet(GuidelineSet);
-                dc.DrawGeometry(FillBrush, null, geometry);
-                dc.DrawGeometry(null, pen, geometry);
-            }
-        }
 
         private void Draw(DrawingVisual visual, Geometry geo, Brush FillBrush, Pen pen)
         {
@@ -480,25 +478,14 @@ namespace DrawDemo
                 dc.DrawGeometry(FillBrush, pen, geo);
             }
         }
-        private void Draw(DrawingContext dc, Geometry geo, Brush FillBrush, Pen pen)
-        {
-            //var guideLines = new GuidelineSet();
-            //guideLines.GuidelinesX = new DoubleCollection();
-            //guideLines.GuidelinesX.Add(rect.X + 0.5);
-            //guideLines.GuidelinesX.Add(rect.X + rect.Width + 0.5);
-            //guideLines.GuidelinesY.Add(rect.Y + 0.5);
-            //guideLines.GuidelinesY.Add(rect.Y + rect.Height + 0.5);
 
-            //dc.PushGuidelineSet(guideLines);
 
-            dc.DrawGeometry(FillBrush, pen, geo);
-        }
         private List<DrawObjVisual> Select(Point start, Point end)
         {
             if (IsSingle(start, end))
             {
                 var result = new List<DrawObjVisual>();
-                var r = this.Canvas.GetVisual(start, CanSelect) as DrawObjVisual;
+                var r = this.DrawingHost.GetVisual(start, CanSelect) as DrawObjVisual;
                 if (r != null)
                 {
                     result.Add(r);
@@ -506,15 +493,54 @@ namespace DrawDemo
                 return result;
             }
 
+            var stop = Stopwatch.StartNew();
+
             var geo = new RectangleGeometry(new Rect(start, end));
-            if (end.X < start.X)
+
+            var selectBox = new Rect(start, end);
+            //var list = this.visuals.Select(visual => (visual, CheckBox(visual))).ToList();
+            //var results = list.Where(p => p.Item2 == IntersectionDetail.FullyInside).Select(p => p.visual).ToList();
+
+            //if (end.X < start.X)
+            //{
+            //    var set = list.Where(p => p.Item2 == IntersectionDetail.Intersects).Select(p => p.visual).ToList();
+            //    var r = this.Canvas.GetVisuals(geo,p=> p!=null && p is DrawObjVisual && set.Contains(p as DrawObjVisual), true, true, true).OfType<DrawObjVisual>().ToList();
+            //    results.AddRange(r);
+            //}
+            var results = this.visuals.Where(p => filter(p)).ToList();
+            Debug.WriteLine(stop.ElapsedMilliseconds);
+
+            return results;
+
+            bool filter(DrawObjVisual visual)
             {
-                return this.Canvas.GetVisuals(geo, CanSelect, true, true, true).OfType<DrawObjVisual>().ToList();
+                var detail = CheckBox(visual);
+                if (detail == IntersectionDetail.FullyInside)
+                    return true;
+                if (detail == IntersectionDetail.Intersects && end.X < start.X)
+                {
+                    detail = visual.Geometry.FillContainsWithDetail(geo);
+                    return detail == IntersectionDetail.Intersects;
+                }
+                return false;
             }
-            else
+
+            IntersectionDetail CheckBox(DrawObjVisual visual)
             {
-                return this.Canvas.GetVisuals(geo, CanSelect, true, false, false).OfType<DrawObjVisual>().ToList();
+                var rect = visual.Geometry.Bounds;
+                if (selectBox.IntersectsWith(rect))
+                {
+                    if (selectBox.Contains(rect))
+                    {
+                        return IntersectionDetail.FullyInside;
+                    }
+                    return IntersectionDetail.Intersects;
+                }
+                return IntersectionDetail.Empty;
             }
+
+
+
         }
 
         internal static bool IsSingle(Point start, Point end)
@@ -571,8 +597,37 @@ namespace DrawDemo
 
             this.Scale = scale;
             this.Translate = translateVector;
+
+            //foreach (var item in this.visuals)
+            //{
+            //    var rect = this.Transform.TransformBounds(item.Object.GetGeometry().Bounds);
+            //    item.XSnappingGuidelines = new DoubleCollection(new[] { 0.5 + (rect.Left), 0.5 + rect.Right });
+            //    item.YSnappingGuidelines = new DoubleCollection(new[] { 0.5 + rect.Top, 0.5 + rect.Bottom });
+            //}
+            //foreach (var item in this.visuals)
+            //{
+            //    var rect = this.Transform.TransformBounds(item.Object.GetGeometry().Bounds);
+            //    item.XSnappingGuidelines = new DoubleCollection(new[] { 0.5 });
+            //    item.YSnappingGuidelines = new DoubleCollection(new[] { 0.5 });
+            //}
+
+            foreach (var item in this.visuals)
+            {
+                var rect = this.Transform.TransformBounds(item.Object.GetGeometry().Bounds);
+                item.XSnappingGuidelines[0] = 0.5 + (rect.Left);
+                item.XSnappingGuidelines[1] = 0.5 + (rect.Right);
+                item.YSnappingGuidelines[0] = 0.5 + (rect.Top);
+                item.YSnappingGuidelines[1] = 0.5 + (rect.Bottom);
+
+                //item.XSnappingGuidelines = new DoubleCollection(new[] { 0.5 + (rect.Left), 0.5 + rect.Right });
+                //item.YSnappingGuidelines = new DoubleCollection(new[] { 0.5 + rect.Top, 0.5 + rect.Bottom });
+            }
         }
 
+        private void SetGuideLines()
+        {
+
+        }
     }
 
     public class SelectedVisualsChangedArgs : EventArgs

@@ -14,7 +14,7 @@ namespace DrawDemo
         public DrawActionBase(DrawingMap map)
         {
             this.Map = map;
-            map.Canvas.KeyDown += Canvas_KeyDown;
+            map.DrawingHost.KeyDown += Canvas_KeyDown;
         }
 
         private void Canvas_KeyDown(object sender, KeyEventArgs e)

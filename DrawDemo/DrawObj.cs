@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 
@@ -35,7 +36,7 @@ namespace DrawDemo
             this.Start = start;
             this.End = end;
             this.FillColor = Brushes.Gray;
-            this.Pen = new Pen(Brushes.Black, 2);
+            this.Pen = new Pen(Brushes.Black, 1);
         }
 
         public Point Start { get; private set; }
@@ -47,6 +48,33 @@ namespace DrawDemo
             if (this.Geometry == null)
             {
                 this.Geometry = new RectangleGeometry(new Rect(Start, End));
+            }
+            return Geometry;
+        }
+    }
+
+    public class CycleObj : DrawObj
+    {
+        public CycleObj(Point center, double r)
+        {
+            this.Center = center;
+            this.R = r;
+   
+            //this.FillColor = Brushes.Gray;
+            this.Pen = new Pen(Brushes.Black, 1);
+        }
+
+        public Point Center { get; private set; }
+        public double R { get; private set; }
+       
+        public EllipseGeometry Geometry { get; private set; }
+
+        public override Geometry GetGeometry()
+        {
+            if (this.Geometry == null)
+            {
+                this.Geometry = new EllipseGeometry(Center, R,R);
+                this.Geometry.Freeze();
             }
             return Geometry;
         }
@@ -176,11 +204,20 @@ namespace DrawDemo
 
         public void UpdateObjs(IEnumerable<Geometry> geometries)
         {
-            this.Group.Children.Clear();
-            foreach (var item in geometries)
-            {
-                this.Group.Children.Add(item);
-            }
+            //var set = geometries.ToHashSet();
+            //var oldSet = Group.Children.ToHashSet();
+            //for (int i = Group.Children.Count - 1; i >= 0; i--)
+            //{
+            //    if (!set.Contains(Group.Children[i]))
+            //        Group.Children.RemoveAt(i);
+            //}
+
+            //foreach (var item in set)
+            //{
+            //    if (!oldSet.Contains(item))
+            //        Group.Children.Add(item);
+            //}
+            Group.Children = new GeometryCollection(geometries);
         }
     }
 
@@ -218,6 +255,13 @@ namespace DrawDemo
             var m = Matrix.Identity * matrix;
             m.Invert();
             return m;
+        }
+
+        public static GeometryDrawing CreateDrawing(this DrawObj obj)
+        {
+            var geo = new GeometryGroup();
+            geo.Children.Add(obj.GetGeometry().MakeFreeze());
+            return new GeometryDrawing(obj.FillColor, obj.Pen, geo);
         }
     }
 }

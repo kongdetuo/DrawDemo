@@ -21,6 +21,7 @@
             <RadioButton x:Name="drawLine" Checked="DrawLine_Checked" Unchecked="Unchecked"  Content="绘制线条"/>
             <RadioButton x:Name="drawText" Checked="drawText_Checked" Unchecked="Unchecked"  Content="绘制文字"/>
             <Label Name="label1"/>
+            <Button Content="window1" Click="Button_Click"/>
         </StackPanel>
 
         <local:DrawingMap Grid.Column="1" x:Name="drawingCanvas" Background="White" ClipToBounds="True"/>

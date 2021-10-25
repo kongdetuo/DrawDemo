@@ -15,6 +15,7 @@ namespace DrawDemo
         public DrawingCanvas()
         {
             Background = Brushes.White;
+            this.AddDrawingLayer();
         }
         private readonly List<DrawingLayer> drawingLayers = new List<DrawingLayer>();
         private readonly List<int> layerVisualCounts = new List<int>();
@@ -55,21 +56,30 @@ namespace DrawDemo
 
         public List<DrawingVisual> GetVisuals(Geometry geometry, Func<Visual, bool> filter, bool fullyInside = false, bool intersets = false, bool fullyContains = false)
         {
+            var callback = new HitTestFilterCallback(p =>
+            {
+                if (p is Visual visual)
+                {
+                    if (filter(visual))
+                        return HitTestFilterBehavior.Continue;
+
+                }
+                return HitTestFilterBehavior.ContinueSkipSelfAndChildren;
+            });
             var hits = new List<DrawingVisual>();
-            VisualTreeHelper.HitTest(this, null, hitResult =>
+            VisualTreeHelper.HitTest(this, callback, hitResult =>
             {
                 var tem = this.visuals;
                 var geometryResult = hitResult as GeometryHitTestResult;
                 var visual = geometryResult.VisualHit as DrawingVisual;
-                if (visual != null && filter?.Invoke(visual) == true)
-                {
-                    if (fullyInside && geometryResult.IntersectionDetail == IntersectionDetail.FullyInside)
-                        hits.Add(visual);
-                    else if (intersets && geometryResult.IntersectionDetail == IntersectionDetail.Intersects)
-                        hits.Add(visual);
-                    else if (fullyContains && geometryResult.IntersectionDetail == IntersectionDetail.FullyContains)
-                        hits.Add(visual);
-                }
+
+                if (fullyInside && geometryResult.IntersectionDetail == IntersectionDetail.FullyInside)
+                    hits.Add(visual);
+                else if (intersets && geometryResult.IntersectionDetail == IntersectionDetail.Intersects)
+                    hits.Add(visual);
+                else if (fullyContains && geometryResult.IntersectionDetail == IntersectionDetail.FullyContains)
+                    hits.Add(visual);
+
                 return HitTestResultBehavior.Continue;
             },
             new GeometryHitTestParameters(geometry));
@@ -84,6 +94,17 @@ namespace DrawDemo
             var index = drawingLayers.TakeWhile(p => p != layer).Append(layer).Sum(p => layerVisualCounts[p.ID]);
             visuals.Insert(index, visual);
             layerVisualCounts[layer.ID]++;
+            base.AddVisualChild(visual);
+            base.AddLogicalChild(visual);
+        }
+        public void AddVisual(Visual visual)
+        {
+            if (visual == null)
+                return;
+
+            var index = layerVisualCounts[0];
+            visuals.Insert(index, visual);
+            layerVisualCounts[0]++;
             base.AddVisualChild(visual);
             base.AddLogicalChild(visual);
         }
@@ -126,7 +147,7 @@ namespace DrawDemo
                     i += layerVisualCounts[i];
                 }
 
-                if(layerVisualCounts[i] > 0)
+                if (layerVisualCounts[i] > 0)
                 {
                     for (int j = layerVisualCounts[i] - 1; j >= 0; j--)
                     {

@@ -51,5 +51,10 @@ namespace DrawDemo
         {
             this.drawingCanvas.DoAction(new DrawTextAction(this.drawingCanvas));
         }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            new Window1().ShowDialog();
+        }
     }
 }
