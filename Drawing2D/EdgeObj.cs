@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows;
 
-namespace DrawDemo
+namespace Drawing2D
 {
     public class EdgeObj
     {
@@ -27,9 +27,9 @@ namespace DrawDemo
 
     public abstract class DrawingState
     {
-        public DrawingCanvas Canvas { get; private set; }
+        public DrawingHost Canvas { get; private set; }
 
-        public DrawingState(DrawingCanvas drawingCanvas)
+        public DrawingState(DrawingHost drawingCanvas)
         {
             this.Canvas = drawingCanvas;
             Canvas.MouseLeftButtonDown += DrawingCanvas_MouseLeftButtonDown;

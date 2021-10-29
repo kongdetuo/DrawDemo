@@ -1,4 +1,4 @@
-﻿namespace DrawDemo
+﻿namespace Drawing2D
 {
     public class Reference
     {

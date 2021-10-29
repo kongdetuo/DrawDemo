@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Drawing2D;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -26,20 +27,30 @@ namespace DrawDemo
             InitializeComponent();
             var dpi = VisualTreeHelper.GetDpi(this);
             label1.Content = dpi.DpiScaleX;
+
+            this.Loaded += MainWindow_Loaded;
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.drawingCanvas.Document = new TestDocument();
+
+
+
         }
 
         private void DrawRectagle_Checked(object sender, RoutedEventArgs e)
         {
-            this.drawingCanvas.DoAction(new DrawRectAction(this.drawingCanvas));
+            
         }
 
         private void MultiSelect_Checked(object sender, RoutedEventArgs e)
         {
-            this.drawingCanvas.DoAction(null);
+           
         }
         private void DrawLine_Checked(object sender, RoutedEventArgs e)
         {
-            this.drawingCanvas.DoAction(new DrawLineAction(this.drawingCanvas));
+            
         }
 
         private void Unchecked(object sender, RoutedEventArgs e)
@@ -49,7 +60,7 @@ namespace DrawDemo
 
         private void drawText_Checked(object sender, RoutedEventArgs e)
         {
-            this.drawingCanvas.DoAction(new DrawTextAction(this.drawingCanvas));
+            
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)

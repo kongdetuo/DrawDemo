@@ -7,14 +7,13 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
 
-namespace DrawDemo
+namespace Drawing2D
 {
-    public class DrawingCanvas : Canvas
+    public class DrawingHost : FrameworkElement
     {
 
-        public DrawingCanvas()
+        public DrawingHost()
         {
-            Background = Brushes.White;
             this.AddDrawingLayer();
         }
         private readonly List<DrawingLayer> drawingLayers = new List<DrawingLayer>();
@@ -127,6 +126,10 @@ namespace DrawDemo
                 base.RemoveVisualChild(item);
                 base.RemoveLogicalChild(item);
             }
+            for (int i = 0; i < this.layerVisualCounts.Count; i++)
+            {
+                layerVisualCounts[i] = 0;
+            }
         }
 
         public DrawingLayer AddDrawingLayer()
@@ -134,6 +137,7 @@ namespace DrawDemo
             var layer = new DrawingLayer(drawingLayers.Count);
             drawingLayers.Add(layer);
             layerVisualCounts.Add(0);
+
             return layer;
         }
 

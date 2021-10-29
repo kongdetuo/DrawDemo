@@ -1,47 +1,81 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 
-namespace DrawDemo
+namespace Drawing2D
 {
-    public abstract class DrawObj
+    public abstract class DrawingElement
     {
-        /// <summary>
-        /// 填充色
-        /// </summary>
-        public Brush FillColor { get; set; }
+        public DrawingElement(DrawingDocument document)
+        {
+            this.Document = document;
+            this.Id = document.IDManager.NewID();
+            document.Add(this);
+        }
 
-        /// <summary>
-        /// 边线
-        /// </summary>
-        public Pen Pen { get; set; }
+        private List<int> childs = new List<int>();
 
-        public double PenThickness { get; } = 1;
+        public DrawingDocument Document { get; }
 
-        public List<DrawObj> Childs = new List<DrawObj>();
+        public int Id { get; }
+
+        public Brush? FillBrush { get; set; }
+
+        public Pen? Pen { get; set; }
+
+        public int ParentId { get; private set; } = -1;
+
+        public IReadOnlyList<int> ChildIds => this.childs;
+
+        public void AddChild(DrawingElement child)
+        {
+            child.ParentId = this.Id;
+            this.childs.Add(child.Id);
+            Document.Update(this);
+            Document.Add(child);
+        }
+
+        public void RemoveChild(DrawingElement child)
+        {
+            this.childs.Remove(child.Id);
+            Document.Update(this);
+            Document.Remove(child);
+        }
+
+        public virtual string GetTip()
+        {
+            return "";
+        }
 
         public abstract Geometry GetGeometry();
 
-        public void Move()
+        public DrawingElement Clone()
         {
-
+            var instance = this.MemberwiseClone() as DrawingElement;
+            instance.childs = new List<int>(childs);
+            return instance;
         }
     }
 
-    public class RectObj : DrawObj
+
+
+    public class RectObj : DrawingElement
     {
-        public RectObj(Point start, Point end)
+        public RectObj(DrawingDocument document, Point start, Point end):base(document)
         {
             this.Start = start;
             this.End = end;
-            this.FillColor = Brushes.Gray;
+            this.FillBrush = Brushes.Gray;
             this.Pen = new Pen(Brushes.Black, 1);
         }
 
         public Point Start { get; private set; }
         public Point End { get; private set; }
-        public RectangleGeometry Geometry { get; private set; }
+        public RectangleGeometry? Geometry { get; private set; }
 
         public override Geometry GetGeometry()
         {
@@ -53,40 +87,47 @@ namespace DrawDemo
         }
     }
 
-    public class CycleObj : DrawObj
+    public class CycleObj : DrawingElement
     {
-        public CycleObj(Point center, double r)
+        public CycleObj(DrawingDocument document, Point center, double r) : base(document)
         {
             this.Center = center;
             this.R = r;
-   
+
             //this.FillColor = Brushes.Gray;
             this.Pen = new Pen(Brushes.Black, 1);
         }
 
         public Point Center { get; private set; }
         public double R { get; private set; }
-       
-        public EllipseGeometry Geometry { get; private set; }
+
+        public Geometry Geometry { get; private set; }
 
         public override Geometry GetGeometry()
         {
             if (this.Geometry == null)
             {
-                this.Geometry = new EllipseGeometry(Center, R,R);
-                this.Geometry.Freeze();
+                //this.Geometry = new EllipseGeometry(Center, R, R);
+                //this.Geometry.Freeze();
+                var g1 = new EllipseGeometry(Center, R, R);
+                var g2 = new EllipseGeometry(Center, R - 2, R - 2);
+                this.Geometry = Geometry.Combine(g1, g2, GeometryCombineMode.Exclude, null);
             }
+
+
+
+
             return Geometry;
         }
     }
-    public class LineObj : DrawObj
+    public class LineObj : DrawingElement
     {
-        public LineObj(Point start, Point end)
+        public LineObj(DrawingDocument document, Point start, Point end) : base(document)
         {
             this.Start = start;
             this.End = end;
-            this.FillColor = Brushes.Gray;
-            this.Pen = new Pen(Brushes.Black, PenThickness);
+            this.FillBrush = Brushes.Gray;
+            this.Pen = new Pen(Brushes.Black, 1);
         }
 
         public Point Start { get; private set; }
@@ -98,19 +139,19 @@ namespace DrawDemo
         }
     }
 
-    public sealed class TextObj : DrawObj
+    public sealed class TextObj : DrawingElement
     {
-        public TextObj(Point point, string text)
+        public TextObj(DrawingDocument document, Point point, string text) : base(document)
         {
             this.Text = text;
             this.Location = point;
-            this.FillColor = Brushes.Black;
+            this.FillBrush = Brushes.Black;
             this.FormatText = new FormattedText(Text,
                 System.Globalization.CultureInfo.CurrentUICulture,
                 FlowDirection.LeftToRight,
                 typeface,
                 16,
-                this.FillColor,
+                this.FillBrush,
                 1);
         }
 
@@ -134,7 +175,7 @@ namespace DrawDemo
                 FlowDirection.LeftToRight,
                 typeface,
                 16,
-                this.FillColor,
+                this.FillBrush,
                 1);
             var geo = formatText.BuildGeometry(Location);
             //geo.Transform = new RotateTransform(45, Location.X, Location.Y);
@@ -149,13 +190,13 @@ namespace DrawDemo
         }
     }
 
-    internal class SelectionRectObj : DrawObj
+    internal class SelectionRectObj : DrawingElement
     {
-        public SelectionRectObj(Point start, Point end)
+        public SelectionRectObj(DrawingDocument document, Point start, Point end) : base(document)
         {
             this.Start = start;
             this.End = end;
-            this.Pen = new Pen(Brushes.Black, PenThickness);
+            this.Pen = new Pen(Brushes.Black, 1);
             if (end.X < start.X)
             {
                 Pen.DashStyle = DashStyles.Dash;
@@ -178,20 +219,40 @@ namespace DrawDemo
         {
         }
 
-        public DrawObjVisual(DrawObj draw)
+        public DrawObjVisual(DrawingElement draw)
         {
             this.Object = draw;
-            this.Brush = draw.FillColor;
+            this.Brush = draw.FillBrush;
             this.Pen = draw.Pen;
+            this.RawGeometry = draw.GetGeometry();
         }
 
-        public DrawObj Object { get; set; }
+        public DrawingElement Object { get; set; }
 
         public Geometry Geometry { get; set; }
+
+        public Geometry RawGeometry { get; set; }
 
         public Brush Brush { get; set; }
 
         public Pen Pen { get; set; }
+
+        internal bool Changed { get; set; }
+
+        private Rect rect;
+
+        internal Rect Rect
+        {
+            get
+            {
+                if (this.Changed)
+                {
+                    rect = this.Geometry.Bounds;
+                    Changed = false;
+                }
+                return rect;
+            }
+        }
     }
     internal class MultiDrawObjVisual : DrawObjVisual
     {
@@ -257,11 +318,11 @@ namespace DrawDemo
             return m;
         }
 
-        public static GeometryDrawing CreateDrawing(this DrawObj obj)
+        public static GeometryDrawing CreateDrawing(this DrawingElement obj)
         {
             var geo = new GeometryGroup();
             geo.Children.Add(obj.GetGeometry().MakeFreeze());
-            return new GeometryDrawing(obj.FillColor, obj.Pen, geo);
+            return new GeometryDrawing(obj.FillBrush, obj.Pen, geo);
         }
     }
 }
